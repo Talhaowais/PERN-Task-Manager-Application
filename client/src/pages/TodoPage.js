@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import api from "../api";
 import { useAuth } from "../context/AuthContext";
 
 function TodoPage() {
-  const { logout, user } = useAuth();
+  const { logout } = useAuth();
 
   const [todos, setTodos] = useState([]);
   const [task, setTask] = useState("");
