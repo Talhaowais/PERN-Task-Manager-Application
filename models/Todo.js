@@ -6,6 +6,10 @@ const Todo = sequelize.define("Todo", {
     type: DataTypes.TEXT,
     allowNull: false,
   },
+  userId: {                     //  Added userId
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  }
 }, {
   timestamps: true,
 });
