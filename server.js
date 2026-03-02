@@ -8,6 +8,7 @@ const authRoutes = require("./routes/authRoutes");
 const authMiddleware = require("./middleware/authMiddleware");
 const cookieParser = require("cookie-parser");
 const app = express();
+const userRoutes = require("./routes/userRoutes");
 
 app.use(express.json());
 app.use(cookieParser());
@@ -16,6 +17,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use("/api/auth", authRoutes);
+app.use("/api/user", userRoutes);
 
 /* ---------- TODO ROUTES ---------- */
 

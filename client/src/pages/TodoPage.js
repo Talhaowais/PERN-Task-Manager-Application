@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 import { useAuth } from "../context/AuthContext";
+import SettingsModal from "../components/SettingsModal";
 
 function TodoPage() {
-  const { logout } = useAuth();
+  const { logout, user, updateUser } = useAuth();
 
   const [todos, setTodos] = useState([]);
   const [task, setTask] = useState("");
@@ -17,6 +18,8 @@ function TodoPage() {
   const [editTask, setEditTask] = useState("");
   const [editError, setEditError] = useState("");
   const [loadingUpdate, setLoadingUpdate] = useState(false);
+
+  const [openSettings, setOpenSettings] = useState(false);
 
   const fetchTodos = async () => {
     try {
@@ -97,6 +100,8 @@ function TodoPage() {
           <button style={styles.logoutBtn} onClick={logout}>
             Logout
           </button>
+
+          <button onClick={() => setOpenSettings(true)}>⚙</button>
         </div>
 
         {/* Add Form */}
@@ -175,6 +180,12 @@ function TodoPage() {
           </div>
         </div>
       )}
+      <SettingsModal
+        isOpen={openSettings}
+        onClose={() => setOpenSettings(false)}
+        user={user}
+        onSaved={(updatedUser) => updateUser(updatedUser)}
+      />
     </div>
   );
 }

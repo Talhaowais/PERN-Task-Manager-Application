@@ -11,3 +11,25 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.modal {
+  background:white;
+  padding:20px;
+  border-radius:10px;
+  width:320px;
+}
+
+.image-preview img {
+  width:100px;
+  height:100px;
+  border-radius:50%;
+  object-fit:cover;
+}

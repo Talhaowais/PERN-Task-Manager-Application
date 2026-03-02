@@ -20,6 +20,22 @@ const User = sequelize.define("User", {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  
+  profileImage: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+
+  birthDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+  },
+
+  pronoun: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  }
+
 }, {
   timestamps: true,
 });
