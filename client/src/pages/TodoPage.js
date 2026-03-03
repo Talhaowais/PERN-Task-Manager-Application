@@ -123,13 +123,11 @@ function TodoPage() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        {/* Welcome Section */}
         <div style={styles.welcomeContainer}>
           <img src={user?.profilePic} alt="Profile" style={styles.profileImage} />
           <h2 style={styles.welcomeText}>Welcome {user?.name} 😊</h2>
         </div>
 
-        {/* Header */}
         <div style={styles.header}>
           <div>
             <h2 style={{ margin: 0 }}>✨ My Todo List</h2>
@@ -141,7 +139,6 @@ function TodoPage() {
           </div>
         </div>
 
-        {/* Add Form */}
         <form onSubmit={addTodo} style={styles.form}>
           <input
             type="text"
@@ -165,36 +162,39 @@ function TodoPage() {
 
         {error && <p style={styles.error}>{error}</p>}
 
-        {/* Table Header */}
+        {/* Column Header */}
         <div style={styles.tableHeader}>
-          <span style={styles.colTask}>Task</span>
-          <span>Status</span>
-          <span>Assigned To</span>
-          <span>Created By</span>
-          <span>Updated By</span>
-          <span>Actions</span>
+          <span style={styles.colHeader}>Task</span>
+          <span style={{ ...styles.colHeader, textAlign: "center" }}>Status</span>
+          <span style={styles.colHeader}>Assigned To</span>
+          <span style={styles.colHeader}>Created By</span>
+          <span style={styles.colHeader}>Updated By</span>
+          <span style={{ ...styles.colHeader, textAlign: "right" }}>Actions</span>
         </div>
 
         <ul style={styles.list}>
           {todos.map((todo) => (
             <li key={todo.id} style={styles.todoRow}>
-              <span style={styles.colTask}>{todo.task}</span>
+              <span style={styles.colTask} title={todo.task}>{todo.task}</span>
 
-              <select
-                value={todo.status}
-                onChange={(e) => updateStatus(todo.id, e.target.value)}
-                style={{ ...styles.statusSelect, ...getStatusStyle(todo.status) }}
-              >
-                <option value="Pending">Pending</option>
-                <option value="Started">Started</option>
-                <option value="Completed">Completed</option>
-              </select>
+              {/* Status Container for Centering */}
+              <div style={styles.statusColContainer}>
+                <select
+                  value={todo.status}
+                  onChange={(e) => updateStatus(todo.id, e.target.value)}
+                  style={{ ...styles.statusSelect, ...getStatusStyle(todo.status) }}
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Started">Started</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
 
               <span style={styles.ellipsis}>{todo.assignedUser?.name || "-"}</span>
               <span style={styles.ellipsis}>{todo.createdByUser?.name || "-"}</span>
               <span style={styles.ellipsis}>{todo.updatedByUser?.name || "-"}</span>
 
-              <div>
+              <div style={styles.actionsContainer}>
                 <button onClick={() => openModal(todo)} style={styles.editBtn}>✏</button>
                 <button
                   onClick={() => deleteTodo(todo.id)}
@@ -209,7 +209,6 @@ function TodoPage() {
         </ul>
       </div>
 
-      {/* Edit Modal */}
       {isModalOpen && (
         <div style={styles.overlay}>
           <div style={styles.modal}>
@@ -217,16 +216,13 @@ function TodoPage() {
               <h3>Edit Task</h3>
               <span style={styles.close} onClick={() => !loadingUpdate && setIsModalOpen(false)}>✖</span>
             </div>
-
             <input
               type="text"
               value={editTask}
               onChange={(e) => setEditTask(e.target.value)}
               style={styles.input}
             />
-
             {editError && <p style={styles.error}>{editError}</p>}
-
             <button onClick={updateTodo} style={styles.updateBtn} disabled={loadingUpdate}>
               {loadingUpdate ? "Updating..." : "Update"}
             </button>
@@ -246,7 +242,7 @@ function TodoPage() {
 
 const styles = {
   page: { minHeight: "100vh", background: "linear-gradient(135deg,#74ebd5,#ACB6E5)", display: "flex", justifyContent: "center", alignItems: "center", padding: "20px", fontFamily: "'Segoe UI', sans-serif" },
-  card: { background: "#fff", padding: "30px", borderRadius: "16px", width: "100%", maxWidth: "1000px", boxShadow: "0 15px 35px rgba(0,0,0,0.18)" },
+  card: { background: "#fff", padding: "30px", borderRadius: "16px", width: "100%", maxWidth: "1100px", boxShadow: "0 15px 35px rgba(0,0,0,0.18)" },
   welcomeContainer: { display: "flex", alignItems: "center", justifyContent: "center", gap: "15px", marginBottom: "25px" },
   profileImage: { width: "70px", height: "70px", borderRadius: "50%", objectFit: "cover", border: "3px solid #4CAF50" },
   welcomeText: { margin: 0, fontWeight: "600" },
@@ -256,46 +252,53 @@ const styles = {
   form: { display: "flex", gap: "10px", marginBottom: "20px" },
   input: { width: "100%", boxSizing: "border-box", flex: 2, padding: "10px", borderRadius: "8px", border: "1px solid #ddd" },
   select: { flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #ddd", textAlign: "center" },
-  statusSelect: { 
-        width: "100%",
-        padding: "6px 10px",
-        borderRadius: "6px",
-        cursor: "pointer",
-        textAlign: "center",
-        boxSizing: "border-box",
-        height: "36px", // slightly taller for better visibility
-        minWidth: "120px", // prevent truncation
-   },
   addBtn: { background: "#4CAF50", color: "#fff", border: "none", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" },
+  
+  // Table Layout Logic
   tableHeader: { 
-        display: "grid",
-        gridTemplateColumns: "2fr 150px 1.5fr 1.5fr 1.5fr 1fr", // increased status column width
-        fontWeight: "bold",
-        marginBottom: "10px",
-        alignItems: "center",
-        gap: "5px",
+    display: "grid",
+    gridTemplateColumns: "1.5fr 140px 1fr 1fr 1fr 100px", 
+    marginBottom: "10px",
+    padding: "0 12px",
+    gap: "15px",
   },
-  colTask: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  list: { listStyle: "none", padding: 0 },
+  colHeader: { fontWeight: "bold", color: "#444", fontSize: "14px" },
+  
+  list: { listStyle: "none", padding: 0, margin: 0 },
   todoRow: { 
-        display: "grid",
-        gridTemplateColumns: "2fr 150px 1.5fr 1.5fr 1.5fr 1fr", // match header
-        background: "#f7f9fc",
-        marginTop: "8px",
-        padding: "12px",
-        borderRadius: "8px",
-        alignItems: "center",
-        gap: "5px",
+    display: "grid",
+    gridTemplateColumns: "1.5fr 140px 1fr 1fr 1fr 100px", 
+    background: "#f7f9fc",
+    marginTop: "8px",
+    padding: "12px",
+    borderRadius: "10px",
+    alignItems: "center",
+    gap: "15px",
+    boxShadow: "0 2px 4px rgba(0,0,0,0.02)"
   },
-  ellipsis: {
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-        minWidth: "80px", // optional: ensures Assigned/Created/Updated columns don't collapse
-   },
-  editBtn: { marginRight: "8px", border: "none", background: "#ffc107", padding: "6px 10px", borderRadius: "6px", cursor: "pointer" },
-  deleteBtn: { border: "none", background: "#e74c3c", color: "#fff", padding: "6px 10px", borderRadius: "6px", cursor: "pointer" },
-  overlay: { position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.35)", display: "flex", justifyContent: "center", alignItems: "center" },
+  
+  // Alignment helpers
+  statusColContainer: { display: "flex", justifyContent: "center", alignItems: "center" },
+  statusSelect: { 
+    width: "110px", 
+    padding: "4px 6px",
+    borderRadius: "6px",
+    cursor: "pointer",
+    textAlign: "center",
+    fontSize: "12px",
+    height: "30px",
+    outline: "none",
+    border: "1px solid transparent"
+  },
+  
+  colTask: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: "500" },
+  ellipsis: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "13px", color: "#666" },
+  
+  actionsContainer: { display: "flex", justifyContent: "flex-end", gap: "8px" },
+  editBtn: { border: "none", background: "#ffc107", padding: "6px 8px", borderRadius: "6px", cursor: "pointer" },
+  deleteBtn: { border: "none", background: "#e74c3c", color: "#fff", padding: "6px 8px", borderRadius: "6px", cursor: "pointer" },
+  
+  overlay: { position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.35)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 },
   modal: { background: "#fff", padding: "25px", borderRadius: "12px", width: "100%", maxWidth: "350px" },
   modalHeader: { display: "flex", justifyContent: "space-between", marginBottom: "15px" },
   close: { cursor: "pointer" },
