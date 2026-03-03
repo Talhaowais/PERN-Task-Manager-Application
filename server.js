@@ -14,7 +14,6 @@ const userRoutes = require("./routes/userRoutes");
 
 const app = express();
 
-
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
@@ -27,20 +26,17 @@ app.use("/api/user", userRoutes);
 
 /* ---------- TODO ROUTES ---------- */
 
-/* ✅ CREATE TODO 
-   - Keeps old userId logic
-   - Adds createdBy
-   - Adds assignedTo
-*/
+/* ✅ CREATE TODO */
 app.post("/api/todos", authMiddleware, async (req, res) => {
   try {
-    const { task, assignedTo } = req.body;
+    const { task, assignedTo, status } = req.body;
 
     const todo = await Todo.create({
       task,
-      createdBy: req.userId,       // 🔥 New tracking
-      updatedBy: req.userId,       // 🔥 Initial update same as creator
-      assignedTo: assignedTo || null
+      createdBy: req.userId,
+      updatedBy: req.userId,
+      assignedTo: assignedTo || null,
+      status: status || "Pending",   // ✅ default status
     });
 
     res.json(todo);
@@ -50,26 +46,21 @@ app.post("/api/todos", authMiddleware, async (req, res) => {
 });
 
 
-/* ✅ GET ALL TODOS
-   - Show todos created by user
-   - OR assigned to user
-*/
-
-// Get all todos visible to the logged-in user
+/* ✅ GET ALL TODOS */
 app.get("/api/todos", authMiddleware, async (req, res) => {
   try {
     const todos = await Todo.findAll({
       where: {
         [Op.or]: [
-          { createdBy: req.userId },       // Todos created by the user
-          { assignedTo: req.userId }    // Todos assigned to the user
+          { createdBy: req.userId },
+          { assignedTo: req.userId }
         ]
       },
       include: [
         {
           model: User,
           as: "createdByUser",
-          attributes: ["id", "name", "email"],  // include only what you need
+          attributes: ["id", "name", "email"],
         },
         {
           model: User,
@@ -93,9 +84,7 @@ app.get("/api/todos", authMiddleware, async (req, res) => {
 });
 
 
-/* ✅ GET SINGLE TODO
-   - Must be owner OR assigned
-*/
+/* ✅ GET SINGLE TODO */
 app.get("/api/todos/:id", authMiddleware, async (req, res) => {
   try {
     const todo = await Todo.findOne({
@@ -119,42 +108,34 @@ app.get("/api/todos/:id", authMiddleware, async (req, res) => {
 });
 
 
-/* ✅ UPDATE TODO
-   - Only owner can update
-   - Track updatedBy
-*/
+/* ✅ UPDATE TODO (NOW SUPPORTS STATUS) */
 app.put("/api/todos/:id", authMiddleware, async (req, res) => {
   try {
-    const { task, assignedTo } = req.body;
+    const { task, assignedTo, status } = req.body;
 
-    const updated = await Todo.update(
-      {
-        task,
-        assignedTo,
-        updatedBy: req.userId   // 🔥 Track updater
-      },
-      {
-        where: {
-          id: req.params.id,
-        }
-      }
-    );
+    const todo = await Todo.findByPk(req.params.id);
 
-    if (!updated[0]) {
-      return res.status(404).json({ message: "Todo not found or unauthorized" });
+    if (!todo) {
+      return res.status(404).json({ message: "Todo not found" });
     }
 
-    res.json({ message: "Updated successfully" });
+    await todo.update({
+      task: task ?? todo.task,
+      assignedTo: assignedTo ?? todo.assignedTo,
+      status: status ?? todo.status,  // ✅ THIS FIXES YOUR ISSUE
+      updatedBy: req.userId
+    });
+
+    res.json({ message: "Updated successfully", todo });
 
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: error.message });
   }
 });
 
 
-/* ✅ DELETE TODO
-   - Only owner can delete
-*/
+/* ✅ DELETE TODO */
 app.delete("/api/todos/:id", authMiddleware, async (req, res) => {
   try {
     const deleted = await Todo.destroy({
@@ -164,7 +145,7 @@ app.delete("/api/todos/:id", authMiddleware, async (req, res) => {
     });
 
     if (!deleted) {
-      return res.status(404).json({ message: "Todo not found or unauthorized" });
+      return res.status(404).json({ message: "Todo not found" });
     }
 
     res.json({ message: "Deleted successfully" });
