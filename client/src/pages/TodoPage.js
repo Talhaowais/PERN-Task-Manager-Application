@@ -91,6 +91,7 @@ function TodoPage() {
     socket.off("todo_created");
     socket.off("todo_deleted");
   };
+   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todos,user?.id]);
 
   // ================= CRUD =================
