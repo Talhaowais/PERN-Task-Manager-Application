@@ -24,28 +24,19 @@ const io = new Server(server, {
   },
 });
 
-/* ---------------- SOCKET CONNECTION ---------------- */
-
-const connectedUsers = {};
-
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
-
-  socket.on("register", (userId) => {
-    connectedUsers[userId] = socket.id;
-    console.log("Registered user:", userId);
+  // Listen for a custom event from the frontend to identify the user
+  socket.on("register_user", (userId) => {
+    socket.join(`user_${userId}`);
+    console.log(`User ${userId} joined their private room.`);
   });
 
   socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
-
-    for (const userId in connectedUsers) {
-      if (connectedUsers[userId] === socket.id) {
-        delete connectedUsers[userId];
-      }
-    }
+    console.log("User disconnected");
   });
 });
+
+
 
 /* ---------------- MIDDLEWARE ---------------- */
 
@@ -60,7 +51,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 
 /* ---------------- TODO ROUTES ---------------- */
-
+debugger;
 app.post("/api/todos", authMiddleware, async (req, res) => {
   try {
     const { task, assignedTo, status } = req.body;
@@ -73,12 +64,35 @@ app.post("/api/todos", authMiddleware, async (req, res) => {
       status: status || "Pending",
     });
 
+    const createdTodo = await Todo.findByPk(todo.id, {
+      include: [
+        { model: User, as: "createdByUser", attributes: ["id", "name", "email"] },
+        { model: User, as: "updatedByUser", attributes: ["id", "name", "email"] },
+        { model: User, as: "assignedUser", attributes: ["id", "name", "email"] },
+      ],
+    });
+
+        const recipients = new Set([
+      createdTodo.createdBy, 
+      createdTodo.assignedTo,
+    ]);
+    console.log("recipients: ", recipients)
+    recipients.forEach(userId => {
+      if (userId) {
+        console.log(userId);
+        io.to(`user_${userId}`).emit("todo_created", createdTodo);
+      }
+    });
+
     res.json(todo);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
+app.get("/", async (req, res) => {
+  res.send("Hello World")
+});
 
 app.get("/api/todos", authMiddleware, async (req, res) => {
   try {
@@ -122,18 +136,29 @@ app.put("/api/todos/:id", authMiddleware, async (req, res) => {
       updatedBy: req.userId
     });
 
-    /* 🔔 REAL-TIME NOTIFICATION */
-    const notifyUsers = [todo.createdBy, todo.assignedTo];
+    // Fetch fresh data with associations to send via socket
+    const updatedTodo = await Todo.findByPk(todo.id, {
+      include: [
+        { model: User, as: "createdByUser", attributes: ["id", "name", "email"] },
+        { model: User, as: "updatedByUser", attributes: ["id", "name", "email"] },
+        { model: User, as: "assignedUser", attributes: ["id", "name", "email"] },
+      ],
+    });
 
-    notifyUsers.forEach((userId) => {
-      if (userId && connectedUsers[userId]) {
-        io.to(connectedUsers[userId]).emit("todoUpdated", {
-          message: `Todo "${todo.task}" was updated`,
-          todoId: todo.id,
-          status: todo.status,
-        });
+
+    /* --- TARGETED EMIT --- */
+    const recipients = new Set([
+      updatedTodo.createdBy, 
+      updatedTodo.assignedTo,
+    ]);
+    console.log("recipients: ", recipients)
+    recipients.forEach(userId => {
+      if (userId) {
+        console.log(userId);
+        io.to(`user_${userId}`).emit("todo_updated", updatedTodo);
       }
     });
+    
 
     res.json({ message: "Updated successfully", todo });
 
@@ -146,6 +171,11 @@ app.put("/api/todos/:id", authMiddleware, async (req, res) => {
 
 app.delete("/api/todos/:id", authMiddleware, async (req, res) => {
   try {
+     const targettedTodo = await Todo.findByPk(req.params.id);
+     const recipients = new Set([
+      targettedTodo.createdBy, 
+      targettedTodo.assignedTo,
+    ]);
     const deleted = await Todo.destroy({
       where: { id: req.params.id }
     });
@@ -153,6 +183,15 @@ app.delete("/api/todos/:id", authMiddleware, async (req, res) => {
     if (!deleted) {
       return res.status(404).json({ message: "Todo not found" });
     }
+
+    
+    console.log("recipients: ", recipients)
+    recipients.forEach(userId => {
+      if (userId) {
+        console.log(userId);
+        io.to(`user_${userId}`).emit("todo_deleted", req.params.id);
+      }
+    });
 
     res.json({ message: "Deleted successfully" });
 

@@ -24,7 +24,7 @@ function TodoPage() {
 
   const [openSettings, setOpenSettings] = useState(false);
 
-  const [socket, setSocket] = useState(null);
+
 
   // ================= FETCH DATA =================
 
@@ -52,30 +52,46 @@ function TodoPage() {
   }, []);
 
   // ================= SOCKET.IO =================
+  // const newSocket = io("http://localhost:5000");
+  const socket = io("http://localhost:5000");
 
   useEffect(() => {
     if (!user?.id) return;
+    socket.emit("register_user", user.id);
+    // 2. Listen for targeted updates
 
-    const newSocket = io("http://localhost:5000", {
-      withCredentials: true,
+    socket.on("todo_updated", (updatedTodo) => {
+      console.log("updated_todo: ", updateTodo)
+      setTodos((prevTodos) => 
+        prevTodos.map(t => t.id === updatedTodo.id ? updatedTodo : t)
+      );
     });
 
-    setSocket(newSocket);
-
-    // Join personal room
-    newSocket.emit("join", user.id);
-
-    // Listen for realtime updates
-    newSocket.on("todoUpdated", (data) => {
-      console.log("Realtime Update:", data);
-      alert(`🔔 ${data.message}`);
-      fetchTodos();
+    socket.on("todo_created", (createTodo) => {
+      console.log("todos: ",todos)
+      console.log("todo_created: ", createTodo)
+      setTodos((prevTodos) =>{
+        const tmpTodos = [...prevTodos];
+        tmpTodos.push(createTodo);
+        return tmpTodos;
+      } 
+      );
     });
 
+    socket.on("todo_deleted", (deleteTodoId) => {
+      console.log("todo_deleted: ", deleteTodoId, typeof(deleteTodoId))
+      console.log("todo Id", typeof todos[0].id, )
+      console.log("updated Todos: ", todos.filter(t => t.id !== parseInt(deleteTodoId) ))
+      setTodos((prevTodos) => 
+        prevTodos.filter(t => t.id !== parseInt(deleteTodoId) )
+      );
+    });
     return () => {
-      newSocket.disconnect();
-    };
-  }, [user]);
+    socket.off("todo_updated");
+    socket.off("todo_created");
+    socket.off("todo_deleted");
+  };
+  }, [todos,user?.id]);
 
   // ================= CRUD =================
 
@@ -178,7 +194,7 @@ function TodoPage() {
     <div style={styles.page}>
       <div style={styles.card}>
         <div style={styles.welcomeContainer}>
-          <img src={user?.profilePic} alt="Profile" style={styles.profileImage} />
+          <img src={user?.profilePic || "https://assets.vercel.com/image/upload/front/favicon/vercel/favicon.ico"} alt="Profile" style={styles.profileImage} />
           <h2 style={styles.welcomeText}>Welcome {user?.name} 😊</h2>
         </div>
 
@@ -245,7 +261,7 @@ function TodoPage() {
         </div>
 
         <ul style={styles.list}>
-          {todos.map((todo) => (
+          {todos?.map((todo) => (
             <li key={todo.id} style={styles.todoRow}>
               <span style={styles.colTask} title={todo.task}>
                 {todo.task}
