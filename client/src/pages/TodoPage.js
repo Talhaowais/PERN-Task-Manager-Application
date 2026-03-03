@@ -7,7 +7,9 @@ function TodoPage() {
   const { logout, user, updateUser } = useAuth();
 
   const [todos, setTodos] = useState([]);
+  const [users, setUsers] = useState([]);
   const [task, setTask] = useState("");
+  const [assignedUserId, setAssignedUserId] = useState("");
   const [error, setError] = useState("");
 
   const [loadingAdd, setLoadingAdd] = useState(false);
@@ -30,22 +32,44 @@ function TodoPage() {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const res = await api.get("/user");
+      setUsers(res.data);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
   useEffect(() => {
     fetchTodos();
+    fetchUsers();
   }, []);
 
   const addTodo = async (e) => {
     e.preventDefault();
+
     if (!task.trim()) {
       setError("⚠ Task cannot be empty");
+      return;
+    }
+
+    if (!assignedUserId) {
+      setError("⚠ Please assign a user");
       return;
     }
 
     try {
       setLoadingAdd(true);
       setError("");
-      await api.post("/todos", { task });
+
+      await api.post("/todos", {
+        task,
+        assignedTo: assignedUserId,
+      });
+
       setTask("");
+      setAssignedUserId("");
       fetchTodos();
     } finally {
       setLoadingAdd(false);
@@ -88,20 +112,38 @@ function TodoPage() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
+
+        {/* ✅ Updated Welcome Section */}
+        <div style={styles.welcomeContainer}>
+          <img
+            src={user?.profilePic || "https://via.placeholder.com/80"}
+            alt="Profile"
+            style={styles.profileImage}
+          />
+          <h2 style={styles.welcomeText}>
+            Welcome {user?.name} 😊
+          </h2>
+        </div>
+
         {/* Header */}
         <div style={styles.header}>
           <div>
             <h2 style={{ margin: 0 }}>✨ My Todo List</h2>
-            <p style={styles.userText}>
-              PERN Stack Application
-            </p>
+            <p style={styles.userText}>PERN Stack Application</p>
           </div>
 
-          <button style={styles.logoutBtn} onClick={logout}>
-            Logout
-          </button>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              style={styles.settingsBtn}
+              onClick={() => setOpenSettings(true)}
+            >
+              ⚙ Settings
+            </button>
 
-          <button onClick={() => setOpenSettings(true)}>⚙</button>
+            <button style={styles.logoutBtn} onClick={logout}>
+              Logout
+            </button>
+          </div>
         </div>
 
         {/* Add Form */}
@@ -113,6 +155,20 @@ function TodoPage() {
             onChange={(e) => setTask(e.target.value)}
             style={styles.input}
           />
+
+          <select
+            value={assignedUserId}
+            onChange={(e) => setAssignedUserId(e.target.value)}
+            style={styles.select}
+          >
+            <option value="">Assign User</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+          </select>
+
           <button style={styles.addBtn} disabled={loadingAdd}>
             {loadingAdd ? "Adding..." : "Add"}
           </button>
@@ -120,11 +176,21 @@ function TodoPage() {
 
         {error && <p style={styles.error}>{error}</p>}
 
-        {/* Todo List */}
+        <div style={styles.tableHeader}>
+          <span>Task</span>
+          <span>Assigned To</span>
+          <span>Created By</span>
+          <span>Updated By</span>
+          <span>Actions</span>
+        </div>
+
         <ul style={styles.list}>
           {todos.map((todo) => (
-            <li key={todo.id} style={styles.todoItem}>
+            <li key={todo.id} style={styles.todoRow}>
               <span>{todo.task}</span>
+              <span>{todo.assignedUser?.name || "-"}</span>
+              <span>{todo.createdByUser?.name || "-"}</span>
+              <span>{todo.updatedByUser?.name || "-"}</span>
 
               <div>
                 <button
@@ -147,7 +213,6 @@ function TodoPage() {
         </ul>
       </div>
 
-      {/* Modal */}
       {isModalOpen && (
         <div style={styles.overlay}>
           <div style={styles.modal}>
@@ -180,6 +245,7 @@ function TodoPage() {
           </div>
         </div>
       )}
+
       <SettingsModal
         isOpen={openSettings}
         onClose={() => setOpenSettings(false)}
@@ -206,8 +272,30 @@ const styles = {
     padding: "30px",
     borderRadius: "16px",
     width: "100%",
-    maxWidth: "420px",
+    maxWidth: "900px",
     boxShadow: "0 15px 35px rgba(0,0,0,0.18)",
+  },
+
+  /* ✅ Updated Welcome Layout */
+  welcomeContainer: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "15px",
+    marginBottom: "25px",
+  },
+
+  profileImage: {
+    width: "70px",
+    height: "70px",
+    borderRadius: "50%",
+    objectFit: "cover",
+    border: "3px solid #4CAF50",
+  },
+
+  welcomeText: {
+    margin: 0,
+    fontWeight: "600",
   },
 
   header: {
@@ -217,10 +305,13 @@ const styles = {
     marginBottom: "20px",
   },
 
-  userText: {
-    fontSize: "13px",
-    color: "#777",
-    margin: "4px 0 0 0",
+  settingsBtn: {
+    background: "#3498db",
+    color: "#fff",
+    border: "none",
+    padding: "8px 12px",
+    borderRadius: "8px",
+    cursor: "pointer",
   },
 
   logoutBtn: {
@@ -235,16 +326,23 @@ const styles = {
   form: {
     display: "flex",
     gap: "10px",
+    marginBottom: "20px",
   },
 
   input: {
     width: "100%",
     boxSizing: "border-box",
+    flex: 2,
+    padding: "10px",
+    borderRadius: "8px",
+    border: "1px solid #ddd",
+  },
+
+  select: {
     flex: 1,
     padding: "10px",
     borderRadius: "8px",
     border: "1px solid #ddd",
-    outline: "none",
   },
 
   addBtn: {
@@ -257,19 +355,25 @@ const styles = {
     fontWeight: "bold",
   },
 
+  tableHeader: {
+    display: "grid",
+    gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr",
+    fontWeight: "bold",
+    marginBottom: "10px",
+  },
+
   list: {
     listStyle: "none",
     padding: 0,
-    marginTop: "20px",
   },
 
-  todoItem: {
+  todoRow: {
+    display: "grid",
+    gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr",
     background: "#f7f9fc",
-    marginTop: "10px",
-    padding: "12px 15px",
-    borderRadius: "10px",
-    display: "flex",
-    justifyContent: "space-between",
+    marginTop: "8px",
+    padding: "12px",
+    borderRadius: "8px",
     alignItems: "center",
   },
 
@@ -309,7 +413,6 @@ const styles = {
     borderRadius: "12px",
     width: "100%",
     maxWidth: "350px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
   },
 
   modalHeader: {
@@ -320,7 +423,6 @@ const styles = {
 
   close: {
     cursor: "pointer",
-    fontSize: "18px",
   },
 
   updateBtn: {
@@ -332,7 +434,6 @@ const styles = {
     background: "#4CAF50",
     color: "#fff",
     cursor: "pointer",
-    fontWeight: "bold",
   },
 
   error: {
