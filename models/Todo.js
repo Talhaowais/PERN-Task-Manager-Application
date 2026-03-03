@@ -11,11 +11,6 @@ const Todo = sequelize.define(
       allowNull: false,
     },
 
-    userId: { // Logged-in user who created the todo (can be same as createdBy)
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-
     createdBy: { // User ID of creator
       type: DataTypes.INTEGER,
       allowNull: false,
