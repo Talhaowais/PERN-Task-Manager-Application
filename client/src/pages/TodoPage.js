@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { io } from "socket.io-client";
 import api from "../api";
 import { useAuth } from "../context/AuthContext";
 import SettingsModal from "../components/SettingsModal";
@@ -23,6 +24,10 @@ function TodoPage() {
 
   const [openSettings, setOpenSettings] = useState(false);
 
+  const [socket, setSocket] = useState(null);
+
+  // ================= FETCH DATA =================
+
   const fetchTodos = async () => {
     try {
       const res = await api.get("/todos");
@@ -46,6 +51,34 @@ function TodoPage() {
     fetchUsers();
   }, []);
 
+  // ================= SOCKET.IO =================
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const newSocket = io("http://localhost:5000", {
+      withCredentials: true,
+    });
+
+    setSocket(newSocket);
+
+    // Join personal room
+    newSocket.emit("join", user.id);
+
+    // Listen for realtime updates
+    newSocket.on("todoUpdated", (data) => {
+      console.log("Realtime Update:", data);
+      alert(`🔔 ${data.message}`);
+      fetchTodos();
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, [user]);
+
+  // ================= CRUD =================
+
   const addTodo = async (e) => {
     e.preventDefault();
     if (!task.trim()) return setError("⚠ Task cannot be empty");
@@ -54,11 +87,13 @@ function TodoPage() {
     try {
       setLoadingAdd(true);
       setError("");
+
       await api.post("/todos", {
         task,
         assignedTo: assignedUserId,
         status: "Pending",
       });
+
       setTask("");
       setAssignedUserId("");
       fetchTodos();
@@ -86,11 +121,14 @@ function TodoPage() {
 
   const updateTodo = async () => {
     if (!editTask.trim()) return setEditError("⚠ Task cannot be empty");
+
     try {
       setLoadingUpdate(true);
+
       await api.put(`/todos/${editingId}`, {
         task: editTask,
       });
+
       setIsModalOpen(false);
       fetchTodos();
     } finally {
@@ -107,18 +145,34 @@ function TodoPage() {
     }
   };
 
+  // ================= STATUS STYLE =================
+
   const getStatusStyle = (status) => {
     switch (status) {
       case "Pending":
-        return { backgroundColor: "#f0f0f0", color: "#555", border: "1px solid #ccc" };
+        return {
+          backgroundColor: "#f0f0f0",
+          color: "#555",
+          border: "1px solid #ccc",
+        };
       case "Started":
-        return { backgroundColor: "#fff3cd", color: "#856404", border: "1px solid #ffeeba" };
+        return {
+          backgroundColor: "#fff3cd",
+          color: "#856404",
+          border: "1px solid #ffeeba",
+        };
       case "Completed":
-        return { backgroundColor: "#d4edda", color: "#155724", border: "1px solid #c3e6cb" };
+        return {
+          backgroundColor: "#d4edda",
+          color: "#155724",
+          border: "1px solid #c3e6cb",
+        };
       default:
         return {};
     }
   };
+
+  // ================= UI =================
 
   return (
     <div style={styles.page}>
@@ -133,9 +187,17 @@ function TodoPage() {
             <h2 style={{ margin: 0 }}>✨ My Todo List</h2>
             <p style={styles.userText}>PERN Stack Application</p>
           </div>
+
           <div style={{ display: "flex", gap: "10px" }}>
-            <button style={styles.settingsBtn} onClick={() => setOpenSettings(true)}>⚙ Settings</button>
-            <button style={styles.logoutBtn} onClick={logout}>Logout</button>
+            <button
+              style={styles.settingsBtn}
+              onClick={() => setOpenSettings(true)}
+            >
+              ⚙ Settings
+            </button>
+            <button style={styles.logoutBtn} onClick={logout}>
+              Logout
+            </button>
           </div>
         </div>
 
@@ -147,6 +209,7 @@ function TodoPage() {
             onChange={(e) => setTask(e.target.value)}
             style={styles.input}
           />
+
           <select
             value={assignedUserId}
             onChange={(e) => setAssignedUserId(e.target.value)}
@@ -154,35 +217,50 @@ function TodoPage() {
           >
             <option value="">Assign User</option>
             {users.map((u) => (
-              <option key={u.id} value={u.id}>{u.name}</option>
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
             ))}
           </select>
-          <button style={styles.addBtn} disabled={loadingAdd}>{loadingAdd ? "Adding..." : "Add"}</button>
+
+          <button style={styles.addBtn} disabled={loadingAdd}>
+            {loadingAdd ? "Adding..." : "Add"}
+          </button>
         </form>
 
         {error && <p style={styles.error}>{error}</p>}
 
-        {/* Column Header */}
+        {/* Header */}
         <div style={styles.tableHeader}>
           <span style={styles.colHeader}>Task</span>
-          <span style={{ ...styles.colHeader, textAlign: "center" }}>Status</span>
+          <span style={{ ...styles.colHeader, textAlign: "center" }}>
+            Status
+          </span>
           <span style={styles.colHeader}>Assigned To</span>
           <span style={styles.colHeader}>Created By</span>
           <span style={styles.colHeader}>Updated By</span>
-          <span style={{ ...styles.colHeader, textAlign: "right" }}>Actions</span>
+          <span style={{ ...styles.colHeader, textAlign: "right" }}>
+            Actions
+          </span>
         </div>
 
         <ul style={styles.list}>
           {todos.map((todo) => (
             <li key={todo.id} style={styles.todoRow}>
-              <span style={styles.colTask} title={todo.task}>{todo.task}</span>
+              <span style={styles.colTask} title={todo.task}>
+                {todo.task}
+              </span>
 
-              {/* Status Container for Centering */}
               <div style={styles.statusColContainer}>
                 <select
                   value={todo.status}
-                  onChange={(e) => updateStatus(todo.id, e.target.value)}
-                  style={{ ...styles.statusSelect, ...getStatusStyle(todo.status) }}
+                  onChange={(e) =>
+                    updateStatus(todo.id, e.target.value)
+                  }
+                  style={{
+                    ...styles.statusSelect,
+                    ...getStatusStyle(todo.status),
+                  }}
                 >
                   <option value="Pending">Pending</option>
                   <option value="Started">Started</option>
@@ -190,12 +268,23 @@ function TodoPage() {
                 </select>
               </div>
 
-              <span style={styles.ellipsis}>{todo.assignedUser?.name || "-"}</span>
-              <span style={styles.ellipsis}>{todo.createdByUser?.name || "-"}</span>
-              <span style={styles.ellipsis}>{todo.updatedByUser?.name || "-"}</span>
+              <span style={styles.ellipsis}>
+                {todo.assignedUser?.name || "-"}
+              </span>
+              <span style={styles.ellipsis}>
+                {todo.createdByUser?.name || "-"}
+              </span>
+              <span style={styles.ellipsis}>
+                {todo.updatedByUser?.name || "-"}
+              </span>
 
               <div style={styles.actionsContainer}>
-                <button onClick={() => openModal(todo)} style={styles.editBtn}>✏</button>
+                <button
+                  onClick={() => openModal(todo)}
+                  style={styles.editBtn}
+                >
+                  ✏
+                </button>
                 <button
                   onClick={() => deleteTodo(todo.id)}
                   style={styles.deleteBtn}
@@ -214,16 +303,30 @@ function TodoPage() {
           <div style={styles.modal}>
             <div style={styles.modalHeader}>
               <h3>Edit Task</h3>
-              <span style={styles.close} onClick={() => !loadingUpdate && setIsModalOpen(false)}>✖</span>
+              <span
+                style={styles.close}
+                onClick={() =>
+                  !loadingUpdate && setIsModalOpen(false)
+                }
+              >
+                ✖
+              </span>
             </div>
+
             <input
               type="text"
               value={editTask}
               onChange={(e) => setEditTask(e.target.value)}
               style={styles.input}
             />
+
             {editError && <p style={styles.error}>{editError}</p>}
-            <button onClick={updateTodo} style={styles.updateBtn} disabled={loadingUpdate}>
+
+            <button
+              onClick={updateTodo}
+              style={styles.updateBtn}
+              disabled={loadingUpdate}
+            >
               {loadingUpdate ? "Updating..." : "Update"}
             </button>
           </div>
