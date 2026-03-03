@@ -25,6 +25,12 @@ const Todo = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    
+    status: {
+      type: DataTypes.ENUM("Pending", "Started", "Completed"),
+      allowNull: false,
+      defaultValue: "Pending",
+    },
   },
   {
     timestamps: true,
