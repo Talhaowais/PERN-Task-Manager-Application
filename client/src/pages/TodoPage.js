@@ -53,7 +53,7 @@ function TodoPage() {
 
   // ================= SOCKET.IO =================
   // const newSocket = io("http://localhost:5000");
-  const socket = io("http://localhost:5000");
+  const socket = io(process.env.REACT_APP_API_URL);
 
   useEffect(() => {
     if (!user?.id) return;
